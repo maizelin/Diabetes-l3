@@ -3,120 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>糖尿病精準決策系統 V2 - SMART on FHIR</title>
+    <title>糖尿病精準決策系統 - 衛福部介接版</title>
     <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #0061f2;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --tier1: #dcfce7; /* 淺綠 - 第一線 */
-            --tier2: #fef9c3; /* 淺黃 - 加強 */
-        }
-
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; margin: 0; color: #1e293b; }
-        .container { max-width: 900px; margin: 20px auto; padding: 0 15px; }
-        
-        /* Header */
-        header { background: #1e293b; color: white; padding: 25px; border-radius: 12px; margin-bottom: 20px; }
-        
-        .grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-bottom: 20px; }
+        :root { --primary: #0061f2; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
+        .header { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; color: var(--primary); }
+        #loading { text-align: center; padding: 50px; font-size: 1.2em; color: #666; }
+        #error-msg { color: var(--danger); display: none; padding: 20px; border: 1px solid var(--danger); border-radius: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
         @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
-
-        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        .card-title { font-weight: 700; color: var(--primary); margin-bottom: 15px; display: flex; align-items: center; }
-        .card-title::before { content: ""; width: 4px; height: 18px; background: var(--primary); margin-right: 10px; border-radius: 2px; }
-
-        /* 藥物分級樣式 */
-        .drug-tier { padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 6px solid; }
-        .tier-1 { background: var(--tier1); border-color: var(--success); }
-        .tier-2 { background: var(--tier2); border-color: var(--warning); }
-        .tier-label { font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; display: block; }
-
-        /* 圖表容器 */
-        .chart-container { position: relative; height: 220px; width: 100%; }
-
-        #loading { text-align: center; padding: 100px; font-weight: bold; color: var(--primary); }
+        .big-val { font-size: 3rem; font-weight: bold; text-align: center; margin: 10px 0; }
+        .suggest-box { padding: 15px; border-radius: 8px; background: #f1f5f9; border-left: 5px solid #cbd5e1; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="loading">📊 正在讀取 FHIR 臨床數據...</div>
+    <div id="loading">📡 正在從衛福部伺服器同步病患資料...</div>
+    <div id="error-msg"></div>
 
     <div id="content" style="display:none;">
-        <header>
-            <h1 style="margin:0; font-size: 22px;">糖尿病臨床決策輔助系統 (ADA 2025)</h1>
-            <p id="p-info" style="opacity:0.8; margin: 10px 0 0;"></p>
-        </header>
+        <div class="card">
+            <h2 class="header">🏥 糖尿病精準決策支援系統 (CDSS)</h2>
+            <p id="p-info" style="font-weight: 500;"></p>
+        </div>
 
         <div class="grid">
             <div class="card">
-                <div class="card-title">HbA1c 歷史趨勢 (最近 5 次)</div>
-                <div class="chart-container">
-                    <canvas id="a1cChart"></canvas>
-                </div>
+                <h3>最新糖化血色素 (HbA1c)</h3>
+                <div id="curr-a1c" class="big-val">--%</div>
+                <div id="status-tag" style="text-align:center; font-weight:bold;"></div>
+                <hr>
+                <h4>💡 臨床建議</h4>
+                <div id="suggestion" class="suggest-box">分析中...</div>
             </div>
 
             <div class="card">
-                <div class="card-title">臨床快照</div>
-                <p>最新 A1C: <strong id="curr-a1c" style="font-size: 24px;">--</strong></p>
-                <div id="comp-badges"></div>
+                <h3>HbA1c 歷史趨勢圖</h3>
+                <canvas id="a1cChart"></canvas>
             </div>
         </div>
-
-        <div class="card">
-            <div class="card-title">ADA 2025 個人化用藥建議</div>
-            <div id="decision-engine">
-                </div>
-        </div>
-        
-        <p style="text-align:center; font-size:12px; color:#94a3b8; margin-top:20px;">
-            此為決策支援系統，最終處方請以醫師臨床判斷為主。
-        </p>
     </div>
 </div>
 
 <script>
-    let a1cChart = null;
+    FHIR.oauth2.ready()
+        .then(client => {
+            console.log("FHIR Client Ready", client);
+            
+            // 同時抓取病患資料與 HbA1c 檢驗值
+            // 搜尋代碼包含 10230-1 (常用) 與 4548-4 (國際標準)
+            const query = new URLSearchParams();
+            query.set("patient", client.patient.id);
+            query.set("code", "10230-1,4548-4");
+            query.set("_sort", "-date");
 
-    FHIR.oauth2.ready().then(client => {
-        // 抓取病患、歷史 A1C (最多5次)、診斷
-        const qPatient = client.patient.read();
-        const qA1c = client.request(`Observation?patient=${client.patient.id}&code=4548-4&_sort=-date&_count=5`);
-        const qCond = client.request(`Condition?patient=${client.patient.id}`);
-
-        Promise.all([qPatient, qA1c, qCond]).then(([patient, a1cBundle, condBundle]) => {
+            return Promise.all([
+                client.patient.read(),
+                client.request(`Observation?${query.toString()}`)
+            ]);
+        })
+        .then(([patient, a1cBundle]) => {
             document.getElementById("loading").style.display = "none";
             document.getElementById("content").style.display = "block";
 
-            // 1. 基本資訊
-            const name = patient.name ? patient.name[0].text : "未知";
-            document.getElementById("p-info").innerText = `病患姓名：${name} | 性別：${patient.gender} | ID：${patient.id}`;
+            // 1. 顯示病患基本資訊
+            const name = patient.name ? patient.name[0].text : "隱名病患";
+            const gender = patient.gender === 'male' ? '男' : '女';
+            document.getElementById("p-info").innerText = `👤 病患：${name} | 性別：${gender} | 序號：${patient.id}`;
 
-            // 2. 處理圖表數據
+            // 2. 處理 HbA1c 數據
             let a1cDates = [];
             let a1cValues = [];
-            if (a1cBundle.entry) {
-                // 反轉數組讓日期從舊到新
+            
+            if (a1cBundle.entry && a1cBundle.entry.length > 0) {
+                // 轉為日期排序
                 const entries = [...a1cBundle.entry].reverse();
                 entries.forEach(e => {
-                    a1cDates.push(new Date(e.resource.effectiveDateTime).toLocaleDateString());
-                    a1cValues.push(e.resource.valueQuantity.value);
+                    const val = e.resource.valueQuantity ? e.resource.valueQuantity.value : null;
+                    const date = e.resource.effectiveDateTime ? new Date(e.resource.effectiveDateTime).toLocaleDateString() : '未知日期';
+                    if (val) {
+                        a1cDates.push(date);
+                        a1cValues.push(val);
+                    }
                 });
             }
 
-            // 更新右側大字體
-            const latestA1c = a1cValues[a1cValues.length - 1] || 0;
-            document.getElementById("curr-a1c").innerText = latestA1c + "%";
-            if (latestA1c > 7) document.getElementById("curr-a1c").style.color = "var(--danger)";
+            const latestA1c = a1cValues.length > 0 ? a1cValues[a1cValues.length - 1] : null;
 
-            // 3. 繪製圖表
+            // 3. 渲染數據與建議
+            if (latestA1c) {
+                const displayDiv = document.getElementById("curr-a1c");
+                const suggestDiv = document.getElementById("suggestion");
+                const statusTag = document.getElementById("status-tag");
+                
+                displayDiv.innerText = latestA1c + "%";
+                
+                if (latestA1c >= 7.0) {
+                    displayDiv.style.color = "var(--danger)";
+                    statusTag.innerText = "🔴 控制不佳";
+                    statusTag.style.color = "var(--danger)";
+                    suggestDiv.innerHTML = "<b>建議措施：</b><br>1. 考慮起始或加強 Metformin 治療。<br>2. 安排營養師進行衛教。<br>3. 三個月後追蹤檢驗。";
+                } else {
+                    displayDiv.style.color = "var(--success)";
+                    statusTag.innerText = "🟢 控制良好";
+                    statusTag.style.color = "var(--success)";
+                    suggestDiv.innerHTML = "<b>維持現狀：</b><br>1. 持續均衡飲食與運動。<br>2. 按照目前醫囑用藥。";
+                }
+            } else {
+                document.getElementById("curr-a1c").innerText = "無資料";
+                document.getElementById("suggestion").innerText = "伺服器中查無此病患的 HbA1c 紀錄。";
+            }
+
+            // 4. 繪製圖表
             const ctx = document.getElementById('a1cChart').getContext('2d');
-            a1cChart = new Chart(ctx, {
+            new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: a1cDates,
@@ -124,4 +129,26 @@
                         label: 'HbA1c (%)',
                         data: a1cValues,
                         borderColor: '#0061f2',
-                        backgroundColor: 'rgba(0, 97, 242, 0.
+                        backgroundColor: 'rgba(0, 97, 242, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { min: 4, max: 12 } }
+                }
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById("loading").style.display = "none";
+            const errBox = document.getElementById("error-msg");
+            errBox.style.display = "block";
+            errBox.innerHTML = `<h3>❌ 系統連線失敗</h3><p>${err.message}</p><p>請確認您是從 launch3.html 啟動，且 Client ID 已正確設定。</p>`;
+        });
+</script>
+
+</body>
+</html>
