@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>糖尿病管理 APP - 啟動中</title>
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.js"></script>
+</head>
+<body>
+    <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
+        <h2>正在連接醫療系統，請稍候...</h2>
+        <p>正在引導至智慧決策支援介面</p>
+    </div>
+
+    <script>
+        // 執行 SMART 授權流程
+        FHIR.oauth2.authorize({
+            // ❗ 請務必將此處替換為您在 FHIR Sandbox (如 Logica, Epic) 註冊後取得的真實 Client ID
+            "client_id": "your_actual_client_id_here", 
+            
+            // 權限範圍解析：
+            // launch: 從 EHR 啟動時必須包含
+            // openid / fhirUser: 獲取使用者身份資訊
+            // patient/*.read: 允許讀取當前病患的所有資源 (Observation, Condition 等)
+            "scope": "launch openid fhirUser patient/*.read",
+            
+            // 授權成功後跳轉的目標檔案
+            // 修改建議：確保此路徑與您的主程式 APP3.html 檔案路徑一致
+            "redirect_uri": "APP3.html" 
+        });
+    </script>
+</body>
+</html>
